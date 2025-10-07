@@ -1,0 +1,133 @@
+﻿@page "/"
+@using TesteChameJaMaui.Models
+@inject TesteChameJaMaui.Services.ProdutosService ProdutosService;
+
+<h3>Produtos</h3>
+
+<button class="btn btn-primary mb-3" @onclick="() => AbrirModal(null)">Adicionar Produto</button>
+<button class="btn btn-secondary mb-3" @onclick="CarregarProdutos">Recarregar Produtos</button>
+
+@if (produtos == null)
+{
+    <p>Carregando...</p>
+}
+else if (produtos.Count == 0)
+{
+    <p>Nenhum produto encontrado.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Descrição</th>
+                <th>Preço</th>
+                <th>Estoque</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in produtos)
+            {
+                <tr>
+                    <td>@p.Nome</td>
+                    <td>@p.Descricao</td>
+                    <td>@p.Preco</td>
+                    <td>@p.Estoque</td>
+                    <td>
+                        <button class="btn btn-warning me-1" @onclick="() => AbrirModal(p)">Editar</button>
+                        <button class="btn btn-danger" @onclick="() => DeletarProduto(p.Id)">Excluir</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (mostrarModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@((produtoEditando.Id == 0) ? "Adicionar Produto" : "Editar Produto")</h5>
+                    <button type="button" class="btn-close" @onclick="FecharModal"></button>
+                </div>
+                <div class="modal-body">
+                    <input placeholder="Nome" @bind="produtoEditando.Nome" class="form-control mb-2" />
+                    <input placeholder="Descrição" @bind="produtoEditando.Descricao" class="form-control mb-2" />
+                    <input type="number" placeholder="Preço" @bind="produtoEditando.Preco" class="form-control mb-2" />
+                    <input type="number" placeholder="Estoque" @bind="produtoEditando.Estoque" class="form-control mb-2" />
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="FecharModal">Cancelar</button>
+                    <button class="btn btn-success" @onclick="SalvarProduto">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+@code {
+    private List<Produto> produtos = new();
+    private Produto produtoEditando = new();
+    private bool mostrarModal = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarProdutos();
+    }
+
+    private async Task CarregarProdutos()
+    {
+        produtos = await ProdutosService.GetProdutosAsync();
+    }
+
+    private void AbrirModal(Produto? produto)
+    {
+        if (produto == null)
+        {
+            produtoEditando = new Produto();
+        }
+        else
+        {
+            produtoEditando = new Produto
+                {
+                    Id = produto.Id,
+                    Nome = produto.Nome,
+                    Descricao = produto.Descricao,
+                    Preco = produto.Preco,
+                    Estoque = produto.Estoque
+                };
+        }
+        mostrarModal = true;
+    }
+
+    private void FecharModal()
+    {
+        mostrarModal = false;
+    }
+
+    private async Task SalvarProduto()
+    {
+        bool sucesso;
+        if (produtoEditando.Id == 0)
+            sucesso = await ProdutosService.CriarProdutoAsync(produtoEditando);
+        else
+            sucesso = await ProdutosService.AtualizarProdutoAsync(produtoEditando);
+
+        if (sucesso)
+        {
+            mostrarModal = false;
+            await CarregarProdutos();
+        }
+    }
+
+    private async Task DeletarProduto(int id)
+    {
+        if (await ProdutosService.DeletarProdutoAsync(id))
+        {
+            produtos.RemoveAll(p => p.Id == id);
+        }
+    }
+}
